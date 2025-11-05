@@ -14,15 +14,17 @@ RUN git clone --branch ${VERSION} https://github.com/shadowsocks/go-shadowsocks2
 WORKDIR /go/go-shadowsocks2
 
 RUN go build -trimpath -ldflags "-s -w" -o bin/go-shadowsocks2 .
-ENV V2RAY_PLUGIN_VERSION v1.3.2
-RUN wget https://github.com/shadowsocks/v2ray-plugin/releases/download/${V2RAY_PLUGIN_VERSION}/v2ray-plugin-${GOOS}-${GOARCH}-${V2RAY_PLUGIN_VERSION}.tar.gz -O v2ray-plugin.tar.gz
-RUN tar -zxvf v2ray-plugin.tar.gz
-RUN mv v2ray-plugin_* v2ray-plugin
+
+# Build v2ray-plugin from source
+WORKDIR /go
+RUN git clone https://github.com/shadowsocks/v2ray-plugin.git
+WORKDIR /go/v2ray-plugin
+RUN go build -trimpath -ldflags "-s -w" -o v2ray-plugin
 
 FROM --platform=$TARGETPLATFORM alpine:latest
 RUN apk update && apk add --no-cache ca-certificates tzdata iproute2
 COPY --from=builder /go/go-shadowsocks2/bin/go-shadowsocks2 /bin/
-COPY --from=builder /go/go-shadowsocks2/v2ray-plugin /bin/
+COPY --from=builder /go/v2ray-plugin/v2ray-plugin /bin/
 ENV TZ=Asia/Shanghai
 RUN uname -a
 ENTRYPOINT ["/bin/go-shadowsocks2"]
